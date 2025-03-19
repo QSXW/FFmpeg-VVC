@@ -564,22 +564,26 @@ static int run_deblock_h(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
 
     return 0;
 }
-
+#pragma optimize("", off)
 static int run_sao(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
 {
-    VVCFrameContext *fc = lc->fc;
-    VVCFrameThread *ft  = fc->ft;
-    const int ctb_size  = ft->ctu_size;
-    const int x0        = t->rx * ctb_size;
-    const int y0        = t->ry * ctb_size;
+    //VVCFrameContext *fc = lc->fc;
+    //VVCFrameThread *ft  = fc->ft;
+    //const int ctb_size  = ft->ctu_size;
+    //const int x0        = t->rx * ctb_size;
+    //const int y0        = t->ry * ctb_size;
 
-    if (fc->ps.sps->r->sps_sao_enabled_flag) {
-        ff_vvc_decode_neighbour(lc, x0, y0, t->rx, t->ry, t->rs);
-        ff_vvc_sao_filter(lc, x0, y0);
-    }
+    //if (fc->ps.sps->r->sps_sao_enabled_flag) {
+    //    ff_vvc_decode_neighbour(lc, x0, y0, t->rx, t->ry, t->rs);
+    //    if (x0 > 1500)
+    //    {
+    //        int p = 0;
+    //    }
+    //    ff_vvc_sao_filter(lc, x0, y0);
+    //}
 
-    if (fc->ps.sps->r->sps_alf_enabled_flag)
-        ff_vvc_alf_copy_ctu_to_hv(lc, x0, y0);
+    //if (fc->ps.sps->r->sps_alf_enabled_flag)
+    //    ff_vvc_alf_copy_ctu_to_hv(lc, x0, y0);
 
     return 0;
 }
@@ -592,10 +596,10 @@ static int run_alf(VVCContext *s, VVCLocalContext *lc, VVCTask *t)
     const int x0        = t->rx * ctu_size;
     const int y0        = t->ry * ctu_size;
 
-    if (fc->ps.sps->r->sps_alf_enabled_flag) {
-        ff_vvc_decode_neighbour(lc, x0, y0, t->rx, t->ry, t->rs);
-        ff_vvc_alf_filter(lc, x0, y0);
-    }
+    //if (fc->ps.sps->r->sps_alf_enabled_flag) {
+    //    ff_vvc_decode_neighbour(lc, x0, y0, t->rx, t->ry, t->rs);
+    //    ff_vvc_alf_filter(lc, x0, y0);
+    //}
     report_frame_progress(fc, t->ry, VVC_PROGRESS_PIXEL);
 
     return 0;

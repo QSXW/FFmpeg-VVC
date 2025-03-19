@@ -27,6 +27,8 @@
 #include "filter.h"
 #include "refs.h"
 
+#pragma optimize("", off)
+
 #define LEFT        0
 #define TOP         1
 #define RIGHT       2
@@ -616,6 +618,10 @@ static void vvc_deblock_bs_luma(const VVCLocalContext *lc,
     const int cb_size         = vertical ? cu->cb_width : cu->cb_height;
     const int has_sb          = !is_intra && (pu->merge_subblock_flag || pu->inter_affine_flag) && cb_size > 8;
 
+    if (x0 == 176 && y0 == 48 && !vertical)
+    {
+        int p = 0;
+    }
     if (deblock_is_boundary(lc, pos > 0 && !(pos & mask), pos, rs, vertical)) {
         const int is_vb         = is_virtual_boundary(fc, pos, vertical);
         const int size          = vertical ? height : width;
@@ -652,6 +658,10 @@ static void vvc_deblock_bs_chroma(const VVCLocalContext *lc,
     const int mask            = (CHROMA_GRID << shift) - 1;
     const int pos             = vertical ? x0 : y0;
 
+    if (x0 == 1488 && y0 == 640)
+    {
+        int ll = 0;
+    }
     if (deblock_is_boundary(lc, pos > 0 && !(pos & mask), pos, rs, vertical)) {
         const int is_vb = is_virtual_boundary(fc, pos, vertical);
         const int size  = vertical ? height : width;
@@ -678,6 +688,10 @@ void ff_vvc_deblock_bs(VVCLocalContext *lc, const int rx, const int ry, const in
     const int x0               = rx << sps->ctb_log2_size_y;
     const int y0               = ry << sps->ctb_log2_size_y;
 
+    if (x0 == 1488 && y0 == 640)
+    {
+        int ll = 0;
+    }
     ff_vvc_decode_neighbour(lc, x0, y0, rx, ry, rs);
     for (const CodingUnit *cu = fc->tab.cus[rs]; cu; cu = cu->next) {
         for (const TransformUnit *tu = cu->tus.head; tu; tu = tu->next) {
@@ -772,21 +786,27 @@ static int get_qp(const VVCFrameContext *fc, const uint8_t *src, const int x, co
 
 static void vvc_deblock(const VVCLocalContext *lc, int x0, int y0, const int rs, const int vertical)
 {
-    VVCFrameContext *fc    = lc->fc;
-    const VVCSPS *sps      = fc->ps.sps;
-    const int c_end        = sps->r->sps_chroma_format_idc ? VVC_MAX_SAMPLE_ARRAYS : 1;
-    const int ctb_size     = fc->ps.sps->ctb_size_y;
-    const DBParams *params = fc->tab.deblock + rs;
-    int x_end              = FFMIN(x0 + ctb_size, fc->ps.pps->width);
-    int y_end              = FFMIN(y0 + ctb_size, fc->ps.pps->height);
+    VVCFrameContext *fc        = lc->fc;
+    const VVCSPS *sps          = fc->ps.sps;
+    const int c_end            = sps->r->sps_chroma_format_idc ? VVC_MAX_SAMPLE_ARRAYS : 1;
+    const int ctb_size         = fc->ps.sps->ctb_size_y;
+    const DBParams *params     = fc->tab.deblock + rs;
+    int x_end                  = FFMIN(x0 + ctb_size, fc->ps.pps->width);
+    int y_end                  = FFMIN(y0 + ctb_size, fc->ps.pps->height);
+    const int log2_min_cb_size = fc->ps.sps->min_cb_log2_size_y;
+    const int min_cb_width     = fc->ps.pps->min_cb_width;
+    int xoffset                = 1 << log2_min_cb_size;
+    int yoffset                = 0;
 
-    //not use this yet, may needed by plt.
-    const uint8_t no_p[4]  = { 0 };
-    const uint8_t no_q[4]  = { 0 } ;
+    if (x0 >= 128 && x0 < 256 && !vertical && y0 < 128)
+    {
+        int ll = 0;
+    }
 
     if (!vertical) {
         FFSWAP(int, x_end, y_end);
         FFSWAP(int, x0, y0);
+        FFSWAP(int, xoffset, yoffset);
     }
 
     for (int c_idx = 0; c_idx < c_end; c_idx++) {
@@ -802,6 +822,13 @@ static void vvc_deblock(const VVCLocalContext *lc, int x0, int y0, const int rs,
                 const uint8_t horizontal_ctu_edge = !vertical && !(x % ctb_size);
                 int32_t bs[4], beta[4], tc[4] = { 0 }, all_zero_bs = 1;
                 uint8_t max_len_p[4], max_len_q[4];
+                uint8_t no_p[4] = { 0 };
+                uint8_t no_q[4] = { 0 };
+
+                if (y == 224 && x == 72 && c_idx == CB && !vertical)
+                {
+                    int ll = 0;
+                }
 
                 for (int i = 0; i < DEBLOCK_STEP >> (2 - vs); i++) {
                     int tx         = x;
@@ -811,6 +838,16 @@ static void vvc_deblock(const VVCLocalContext *lc, int x0, int y0, const int rs,
                     if (!vertical)
                         FFSWAP(int, tx, ty);
 
+                    if (ty == 72 && tx == 224 && c_idx == CB)
+                    {
+                        int ll = 0;
+                    }
+
+                    if (tx >= 176 && tx < 192 && ty == 48 && !vertical)
+                    {
+                        int p = 0;
+                    }
+
                     bs[i] = end ? 0 : TAB_BS(fc->tab.bs[vertical][c_idx], tx, ty);
                     if (bs[i]) {
                         const int qp = get_qp(fc, POS(c_idx, tx, ty), tx, ty, c_idx, vertical);
@@ -818,6 +855,18 @@ static void vvc_deblock(const VVCLocalContext *lc, int x0, int y0, const int rs,
                         tc[i] = TC_CALC(qp, bs[i]) ;
                         max_filter_length(fc, tx, ty, c_idx, vertical, horizontal_ctu_edge, bs[i], &max_len_p[i], &max_len_q[i]);
                         all_zero_bs = 0;
+
+                        if (sps->r->sps_palette_enabled_flag) {
+                            int cu_q = (ty           >> log2_min_cb_size) * min_cb_width + (tx           >> log2_min_cb_size);
+                            int cu_p = (ty - yoffset >> log2_min_cb_size) * min_cb_width + (tx - xoffset >> log2_min_cb_size);
+                            no_q[i] = fc->tab.cpm[0][cu_q] == MODE_PLT;
+                            no_p[i] = cu_p >= 0 && fc->tab.cpm[0][cu_p] == MODE_PLT;
+
+                            if ((no_q[i] == 1 || no_p[i] == 1) && c_idx == CR)
+                            {
+                                int p = 0;
+                            }
+                        }
                     }
                 }
 
@@ -827,6 +876,11 @@ static void vvc_deblock(const VVCLocalContext *lc, int x0, int y0, const int rs,
                         fc->vvcdsp.lf.filter_luma[vertical](src, src_stride, beta, tc, no_p, no_q, max_len_p, max_len_q, horizontal_ctu_edge);
                     else
                         fc->vvcdsp.lf.filter_chroma[vertical](src, src_stride, beta, tc, no_p, no_q, max_len_p, max_len_q, vs);
+                }
+
+                if (*(int16_t *)&fc->ref->frame->data[1][71 * 1920 + ((228 >> 1) * 2)] != 590)
+                {
+                    int ll = 0;
                 }
             }
         }

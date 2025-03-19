@@ -26,7 +26,7 @@
 #include "ctu.h"
 #include "inter.h"
 #include "mvs.h"
-
+#pragma optimize("", off)
 #define PROF_TEMP_SIZE (PROF_BLOCK_SIZE) * sizeof(int16_t)
 
 #define TAB_MSM(fc, depth, x, y) fc->tab.msm[(depth)][((y) >> 5) * fc->ps.pps->width32 + ((x) >> 5)]
@@ -1105,13 +1105,16 @@ static PredMode pred_mode_decode(VVCLocalContext *lc,
     const H266RawSliceHeader *rsh   = lc->sc->sh.r;
     const int ch_type               = tree_type == DUAL_TREE_CHROMA ? 1 : 0;
     const int is_4x4                = cu->cb_width == 4 && cu->cb_height == 4;
+    const int is_128                = cu->cb_width == 128 || cu->cb_height == 128;
+    const int hs                    = sps->hshift[CHROMA];
+    const int vs                    = sps->vshift[CHROMA];
     int pred_mode_flag;
     int pred_mode_ibc_flag;
     PredMode pred_mode;
+    int pred_mode_plt_flag = 0;
 
     cu->skip_flag = 0;
     if (!IS_I(rsh) || sps->r->sps_ibc_enabled_flag) {
-        const int is_128 = cu->cb_width == 128 || cu->cb_height == 128;
         if (tree_type != DUAL_TREE_CHROMA &&
             ((!is_4x4 && mode_type != MODE_TYPE_INTRA) ||
             (sps->r->sps_ibc_enabled_flag && !is_128))) {
@@ -1145,6 +1148,20 @@ static PredMode pred_mode_decode(VVCLocalContext *lc,
     } else {
         pred_mode = MODE_INTRA;
     }
+
+    // if (pred_mode == MODE_INTRA && sps->r->sps_palette_enabled_flag && !is_128 && !cu->skip_flag &&
+    //     mode_type != MODE_TYPE_INTER && ((cu->cb_width * cu->cb_height) >
+    //         (tree_type != DUAL_TREE_CHROMA ? 16 : (16 << hs << vs))) &&
+    //     (mode_type != MODE_TYPE_INTRA || tree_type != DUAL_TREE_CHROMA)) {
+    //     pred_mode_plt_flag = ff_vvc_pred_mode_plt_flag(lc);
+    //     if (pred_mode_plt_flag)
+    //         pred_mode = MODE_PLT;
+    // }
+
+    // if (cu->x0 == 176 && cu->y0 == 32)
+    // {
+    //     int i = 0;
+    // }
 
     set_cb_tab(lc, fc->tab.cpm[cu->ch_type], pred_mode);
     if (tree_type == SINGLE_TREE)
@@ -1985,6 +2002,12 @@ static void add_palette_tu(VVCLocalContext *lc)
         add_tb(tu, lc, tu->x0, tu->y0, tu->width >> sps->hshift[CR], tu->height >> sps->vshift[CR], CR);
     }
 
+    for (int i = 0; i < tu->nb_tbs; i++) {
+        TransformBlock *tb = &tu->tbs[i];
+        if (tb->c_idx != CR)
+            set_tb_size(lc->fc, tb);
+    }
+
     memset(cu->palette, 0, sizeof(cu->palette));
     memset(cu->palette_predictor_reuse_flags, 0, sizeof(cu->palette_predictor_reuse_flags));
 
@@ -2019,6 +2042,11 @@ static int palette_coding(VVCLocalContext *lc, const VVCTreeType tree_type)
     int prev_run_pos                    = 0;
 
     int i, c, num, adjust = 0;
+
+    cu->pred_mode = MODE_PLT;
+    set_cb_tab(lc, fc->tab.cpm[cu->ch_type], MODE_PLT);
+    if (tree_type == SINGLE_TREE)
+        set_cb_tab(lc, fc->tab.cpm[CHROMA], MODE_PLT);
 
     add_palette_tu(lc);
 
@@ -2104,8 +2132,18 @@ static int hls_coding_unit(VVCLocalContext *lc, int x0, int y0, int cb_width, in
     const int hs                    = sps->hshift[CHROMA];
     const int vs                    = sps->vshift[CHROMA];
     const int is_128                = cb_width > 64 || cb_height > 64;
-    int pred_mode_plt_flag          = 0;
     int ret;
+    int pred_mode_plt_flag = 0;
+
+    if (x0 == 224 && y0 == 68)
+    {
+        int ll = 0;
+    }
+
+    if (x0 == 224 && y0 == 64)
+    {
+        int ll = 0;
+    }
 
     CodingUnit *cu = add_cu(lc, x0, y0, cb_width, cb_height, cqt_depth, tree_type);
 
@@ -2117,15 +2155,16 @@ static int hls_coding_unit(VVCLocalContext *lc, int x0, int y0, int cb_width, in
     if (IS_I(rsh) && is_128)
         mode_type = MODE_TYPE_INTRA;
     cu->pred_mode = pred_mode_decode(lc, tree_type, mode_type);
-
+    pred_mode_plt_flag = cu->pred_mode == MODE_PLT;
     if (cu->pred_mode == MODE_INTRA && sps->r->sps_palette_enabled_flag && !is_128 && !cu->skip_flag &&
         mode_type != MODE_TYPE_INTER && ((cb_width * cb_height) >
         (tree_type != DUAL_TREE_CHROMA ? 16 : (16 << hs << vs))) &&
         (mode_type != MODE_TYPE_INTRA || tree_type != DUAL_TREE_CHROMA)) {
         pred_mode_plt_flag = ff_vvc_pred_mode_plt_flag(lc);
-        if (pred_mode_plt_flag)
-            cu->pred_mode = MODE_PLT;
+        //if (pred_mode_plt_flag)
+        //    cu->pred_mode = MODE_PLT;
     }
+
     if (cu->pred_mode == MODE_INTRA && sps->r->sps_act_enabled_flag && tree_type == SINGLE_TREE) {
         avpriv_report_missing_feature(fc->log_ctx, "Adaptive Color Transform");
         return AVERROR_PATCHWELCOME;

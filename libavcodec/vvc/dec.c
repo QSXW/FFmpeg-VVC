@@ -42,7 +42,7 @@
 #include "refs.h"
 #include "thread.h"
 #include "config_components.h"
-
+#pragma optimize("", off)
 #define TRAV_SCAN_ORDER_SIZE 129032
 
 #define TAB_MAX 32
@@ -364,7 +364,7 @@ static void palette_tl_init(TabList *l, VVCFrameContext* fc)
     const int changed   = fc->tab.sz.ctu_count != ctu_count || fc->tab.sz.ctu_size != ctu_size;
 
     if (sps && sps->r->sps_palette_enabled_flag) {
-        tl_init(l, 1, changed);
+        tl_init(l, 0, changed);
 
         fc->tab.predictor_palette->size = 0;
         TL_ADD(palette_index_map, ctu_count * ctu_size * VVC_MAX_SAMPLE_ARRAYS);
@@ -1141,6 +1141,32 @@ static int frame_end(VVCContext *s, VVCFrameContext *fc)
         }
     }
 
+    //FILE *fp = fopen("C:\\Users\\qsxw\\Desktop\\test\\deblcoked0.dat", "wb+");
+
+    //fwrite(fc->ref->frame->data[0], fc->ref->frame->height * fc->ref->frame->linesize[0], 1, fp);
+    //fclose(fp);
+
+    //fp = fopen("C:\\Users\\qsxw\\Desktop\\test\\deblcoked1.dat", "wb+");
+    //fwrite(fc->ref->frame->data[1], fc->ref->frame->height * fc->ref->frame->linesize[1], 1, fp);
+    //fclose(fp);
+
+    //fp = fopen("C:\\Users\\qsxw\\Desktop\\test\\deblcoked2.dat", "wb+");
+    //fwrite(fc->ref->frame->data[2], fc->ref->frame->height * fc->ref->frame->linesize[2], 1, fp);
+    //fclose(fp);
+
+    //FILE *fp = fopen("C:\\Users\\qsxw\\Desktop\\test\\frame0.dat", "wb+");
+
+    //fwrite(fc->ref->frame->data[0], fc->ref->frame->height * fc->ref->frame->linesize[0], 1, fp);
+    //fclose(fp);
+
+    //fp = fopen("C:\\Users\\qsxw\\Desktop\\test\\frame1.dat", "wb+");
+    //fwrite(fc->ref->frame->data[1], fc->ref->frame->height * fc->ref->frame->linesize[1], 1, fp);
+    //fclose(fp);
+
+    //fp = fopen("C:\\Users\\qsxw\\Desktop\\test\\frame2.dat", "wb+");
+    //fwrite(fc->ref->frame->data[2], fc->ref->frame->height * fc->ref->frame->linesize[2], 1, fp);
+    //fclose(fp);
+
     if (!s->avctx->hwaccel && s->avctx->err_recognition & AV_EF_CRCCHECK) {
         if (fc->sei.picture_hash.present) {
             ret = ff_h274_verify_picture_hash(&fc->sei.picture_hash,
@@ -1151,6 +1177,11 @@ static int frame_end(VVCContext *s, VVCFrameContext *fc)
                     (int)fc->decode_order);
                 if (s->avctx->err_recognition & AV_EF_EXPLODE)
                     return ret;
+            }
+            else {
+                av_log(s->avctx, AV_LOG_DEBUG,
+                    "Verifying checksum for frame with decoder_order %d: succeed\n",
+                    (int)fc->decode_order);
             }
         }
     }
@@ -1302,7 +1333,7 @@ static av_cold int vvc_decode_init(AVCodecContext *avctx)
     static AVOnce init_static_once = AV_ONCE_INIT;
     const int cpu_count            = av_cpu_count();
     const int delayed              = FFMIN(cpu_count, VVC_MAX_DELAYED_FRAMES);
-    int thread_count               = avctx->thread_count ? avctx->thread_count : delayed;
+    int thread_count               = 1;// avctx->thread_count ? avctx->thread_count : delayed;
     int ret;
 
     s->avctx = avctx;

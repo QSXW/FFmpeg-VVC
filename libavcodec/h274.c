@@ -823,6 +823,7 @@ static const uint8_t *get_plane_hash(const H274SEIPictureHash *h, const int plan
     return (uint8_t*)&h->checksum[plane];
 }
 
+#pragma optimize("", off)
 static int verify_plane_hash(const int hash_type,
     const uint8_t *src, const int w, const int h, const int stride,
     const uint8_t *expected)

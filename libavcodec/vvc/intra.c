@@ -592,7 +592,7 @@ static int reconstruct(VVCLocalContext *lc)
         (x << ps) + (y + ((cu->y0 & ~(sps->ctb_size_y - 1)) >> vs)) * ibc_stride)
 #define IBC_X(x)  ((x) & ((fc->tab.sz.ibc_buffer_width >> hs) - 1))
 #define IBC_Y(y)  ((y) & ((1 << sps->ctb_log2_size_y >> vs) - 1))
-
+#pragma optimize("", off)
 static void intra_block_copy(const VVCLocalContext *lc, const int c_idx)
 {
     const CodingUnit *cu      = lc->cu;
@@ -613,6 +613,11 @@ static void intra_block_copy(const VVCLocalContext *lc, const int c_idx)
     const int dst_stride      = fc->frame->linesize[c_idx];
     const uint8_t *ibc_buf    = IBC_POS(c_idx, ref_x, ref_y);
     uint8_t *dst              = POS(c_idx, cu->x0, cu->y0);
+
+    if (cu->x0 == 228 && cu->y0 == 68)
+    {
+        int p = 0;
+    }
 
     av_image_copy_plane(dst, dst_stride, ibc_buf, ibc_stride, rw << ps, h);
 
@@ -657,7 +662,7 @@ static void ibc_fill_vir_buf(const VVCLocalContext *lc, const CodingUnit *cu)
         av_image_copy_plane(ibc_buf, ibc_stride, src, src_stride, cu->cb_width >> hs << ps , cu->cb_height >> vs);
     }
 }
-
+#pragma optimize("", off)
 // 8.4.5.3 Decoding process for palette mode
 static void vvc_predict_palette(VVCLocalContext *lc)
 {
@@ -688,6 +693,11 @@ static void vvc_predict_palette(VVCLocalContext *lc)
         qp[c_idx] = FFMAX(qp_prime_ts_min, tu->tbs[c_idx].qp);
     }
 
+    if (cu->x0 == 228 && cu->y0 == 72)
+    {
+        int p = 0;
+    }
+
     fc->vvcdsp.intra.palette_pred(lc, start_comp, num_comp, qp);
 }
 
@@ -707,6 +717,10 @@ int ff_vvc_reconstruct(VVCLocalContext *lc, const int rs, const int rx, const in
     while (cu) {
         lc->cu = cu;
 
+        if (cu->x0 == 224 && cu->y0 == 68)
+        {
+            int ll = 0;
+        }
         if (cu->ciip_flag)
             ff_vvc_predict_ciip(lc);
         else if (cu->pred_mode == MODE_IBC)

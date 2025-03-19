@@ -21,7 +21,7 @@
  */
 
 #include "libavcodec/h26x/h2656_sao_template.c"
-
+#pragma optimize("", off)
 static void FUNC(lmcs_filter_luma)(uint8_t *_dst, ptrdiff_t dst_stride, const int width, const int height, const void *_lut)
 {
     const pixel *lut = _lut;

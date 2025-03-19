@@ -23,7 +23,7 @@
 #include "libavcodec/bit_depth_template.c"
 
 #include "intra.h"
-
+#pragma optimize("", off)
 #define POS(x, y) src[(x) + stride * (y)]
 
 static av_always_inline void FUNC(cclm_linear_pred)(VVCFrameContext *fc, const int x0, const int y0,
